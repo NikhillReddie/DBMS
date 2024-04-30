@@ -1,0 +1,242 @@
+--The Document Shows the SQL and PL/SQL queries for Insurance Database.
+
+
+
+1.List the names and salaries of all the underwriters in the company.
+create or replace view q1 as
+	SELECT UPPER(P.givenName) || ' ' || UPPER(P.familyName) AS "NAME",'$' || TO_CHAR(E.salary, '999,999.99') AS "SALARY"
+	FROM Employee E
+	JOIN Party P ON E.id = P.id
+	WHERE UPPER(E.position) = 'UNDERWRITER';
+
+2.List the names and address of all clients who have had coverage declined.
+create or replace view q2 as
+SELECT p.givenName, p.familyName, p.street, p.suburb, p.state
+FROM Party p
+INNER JOIN Client c ON c.id = p.id
+WHERE c.id IN (
+SELECT h.client
+FROM Holds h
+INNER JOIN Policy pol ON pol.id = h.policy
+WHERE pol.id IN (
+SELECT cov.policy
+FROM Covers cov
+INNER JOIN RatingAction ra ON ra.coverage = cov.coverage
+WHERE ra.action = 'D'
+ )
+ );
+
+3.List the names of all employees who hold an insurance policy with the company. The policy must have an "ok" status.
+create or replace view q3 as
+	SELECT DISTINCT P.givenName || ' ' || P.familyName AS "Employee Name"
+    FROM Party P
+    JOIN Employee E ON P.id = E.id
+    JOIN Holds H ON E.id = H.client
+    JOIN Policy PO ON H.policy = PO.id
+    WHERE PO.status = 'OK';
+
+4.List the total amount of money collected from policy premiums.
+create or replace view q4 as
+	SELECT SUM(premium) AS "Total Premiums Collected"
+    FROM Policy;
+
+5.List the total amount of money paid out in claims.
+create or replace view q5 as
+	SELECT SUM(amount) AS "Total|Money|Paid Out"
+    FROM ClaimAction
+    WHERE action = 'PO';
+
+6.List the names of clients who have made claim against their own insurance policies.
+create or replace view q6 as
+	SELECT P.givenName || ' ' || P.familyName AS "Name"
+    FROM Party P
+    JOIN Client C ON P.id = C.id
+    JOIN Claimant CA ON P.id = CA.id  
+    JOIN Claim CL ON CA.id = CL.claimant
+    JOIN Policy PO ON CL.policy = PO.id
+    JOIN Holds H ON PO.id = H.policy AND H.client = C.id;
+
+7.List the policy numbers for any policies that have a coverage benefit which is larger than the market value of the car. Sort the result in ascending order of policy number.
+create or replace view q7 as
+	SELECT DISTINCT PO.id AS "Policy Number"
+    FROM Policy PO
+    JOIN Covers CV ON PO.id = CV.policy
+    JOIN CoveredItem CI ON CV.item = CI.id
+    JOIN Coverage COV ON CV.coverage = COV.id
+    WHERE COV.coverValue > CI.marketValue
+    ORDER BY PO.id ASC;
+;
+
+8.How many of each make/model of car are insured? List in ascending order by the make of car.
+create or replace view q8 as
+	SELECT make, model, COUNT(*) AS "#" 
+    FROM CoveredItem
+    GROUP BY make, model
+    ORDER BY make ASC, model ASC;
+;
+
+9.For each staff member who is a policy holder, list the other staff member in the company who has processed the policies held by this staff member. That is, for each policy held by a staff member, list a staff member who has either rated or underwritten the policy.
+create or replace view q9 as
+SELECT DISTINCT E1.staff# AS "Policy Holder",
+                E2.staff# AS "Staff Member Processing Policy"
+FROM Employee E1
+JOIN Holds H ON E1.id = H.client
+JOIN Policy PO ON H.policy = PO.id
+LEFT JOIN UnderWritingAction UA ON PO.id = UA.policy
+LEFT JOIN RatingAction RA ON PO.id = RA.coverage
+LEFT JOIN Employee E2 ON (UA.underwriter = E2.id OR RA.rater = E2.id)
+WHERE E1.staff# <> E2.staff#;
+
+10.List the policy id and the car make/model where the vehicle is covered by all of the possible coverages.
+create or replace view q10 as
+SELECT CI.policy AS "Policy ID", CI.make, CI.model
+FROM (
+    SELECT COV.policy, CI.make, CI.model, COUNT(DISTINCT COV.coverage) AS num_coverages
+    FROM Covers COV
+    JOIN CoveredItem CI ON COV.item = CI.id
+    GROUP BY COV.policy, CI.make, CI.model
+) CI
+JOIN (
+    SELECT COUNT(DISTINCT id) AS total_coverages
+    FROM Coverage
+) C ON CI.num_coverages = C.total_coverages;
+
+
+--PL/SQL Queries 
+
+1.Give a 10% reduction in the insurance premium for all policy holders who are employees and have insured with the company.
+create or replace
+procedure discount as
+    v_rework_count      INTEGER := 0;
+    v_rerate_count      INTEGER := 0;
+    v_reunderwrite_count INTEGER := 0;
+begin
+    SELECT COUNT(*) INTO v_rework_count
+    FROM Policy P
+    WHERE P.status IN ('DR', 'RA', 'UW');
+
+    SELECT COUNT(*) INTO v_rerate_count
+    FROM Policy P
+    JOIN RatingAction RA ON P.id = RA.coverage
+    WHERE P.status IN ('DR', 'RA', 'UW') AND RA.action = 'D';
+
+    SELECT COUNT(*) INTO v_reunderwrite_count
+    FROM Policy P
+    JOIN UnderWritingAction UA ON P.id = UA.policy
+    WHERE P.status IN ('DR', 'RA', 'UW') AND UA.action = 'D';
+
+    DBMS_OUTPUT.PUT_LINE('Total number of policies needing rework: ' || v_rework_count);
+
+    DBMS_OUTPUT.PUT_LINE('Number of policies needing re-rating: ' || v_rerate_count);
+
+    DBMS_OUTPUT.PUT_LINE('Number of policies needing re-underwriting: ' || v_reunderwrite_count);
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+end;
+/
+
+-- to check 
+create or replace view Emppolicies as
+	SELECT id, premium
+    FROM Policy
+    WHERE premium IS NOT NULL
+    AND id IN (
+    SELECT policy
+    FROM Holds
+    WHERE client IN (
+    SELECT id
+    FROM Employee
+    )
+    );
+
+2.Display a list of all of the claims and their corresponding actions for a given policy. The output must show, for each claim, the claim details and then give a time-ordered list of all actions on that claim.
+Use the following procedure header:
+
+   procedure claims(policyID integer)
+
+create or replace
+procedure claims(policyID integer) as
+c_claim CLAIM%ROWTYPE;
+  CURSOR c_actions IS
+    SELECT *
+    FROM ClaimAction
+    WHERE claim = claims.id
+    ORDER BY happened ASC;
+  l_action ACTIONS%ROWTYPE;
+BEGIN
+  OPEN c_actions;
+  LOOP
+    FETCH c_actions INTO l_action;
+    EXIT WHEN c_actions%NOTFOUND;
+
+    DBMS_OUTPUT.PUT_LINE('Claim ID: ' || claims.id);
+    DBMS_OUTPUT.PUT_LINE('Policy ID: ' || claims.policy);
+    DBMS_OUTPUT.PUT_LINE('Claimant: ' || 
+      (SELECT p.givenName || ' ' || p.familyName 
+       FROM Party p WHERE p.id = claims.claimant));
+    DBMS_OUTPUT.PUT_LINE('Lodge Date: ' || claims.lodgeDate);
+    DBMS_OUTPUT.PUT_LINE('Event Date: ' || claims.eventDate);
+    DBMS_OUTPUT.PUT_LINE('Reserve: ' || claims.reserve);
+    DBMS_OUTPUT.PUT_LINE('Status: ' || claims.status);
+
+    DBMS_OUTPUT.PUT_LINE('Claim Actions:');
+    LOOP
+      FETCH c_actions INTO l_action;
+      EXIT WHEN c_actions%NOTFOUND;
+
+      DBMS_OUTPUT.PUT_LINE('  Date: ' || l_action.happened);
+      DBMS_OUTPUT.PUT_LINE('  Action: ' || l_action.action);
+      IF l_action.amount IS NOT NULL THEN
+        DBMS_OUTPUT.PUT_LINE('  Amount: ' || l_action.amount);
+      END IF;
+      IF l_action.actor IS NOT NULL THEN
+        DBMS_OUTPUT.PUT_LINE('  Actor: ' || 
+          (SELECT givenName || ' ' || familyName 
+           FROM Party WHERE id = l_action.actor));
+      END IF;
+      DBMS_OUTPUT.PUT_LINE(' ');
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE('---------------------------');
+  END LOOP;
+  CLOSE c_actions;
+end;
+/
+
+3.List how many and what policies need to be reworked? (Note: Altering a policy because of clerical error when the policy was created does not count as rework. Even when the policy has been committed to the database but is altered before the rater does the rating, the alteration is still not classified as rework. The policy is a rework only when it is refused by a rater or underwriter). 
+create or replace
+procedure policy_rework_list 
+is
+  v_rerated_count INTEGER := 0;
+  v_reunderwritten_count INTEGER := 0;
+  CURSOR c_policies IS
+    SELECT p.id, ua.action
+    FROM Policy p
+    LEFT JOIN UnderWritingAction ua ON p.id = ua.policy;
+  CURSOR c_rated_policies IS
+    SELECT p.id, ra.action
+    FROM Policy p
+    LEFT JOIN Covers cv ON p.id = cv.policy
+    LEFT JOIN RatingAction ra ON cv.coverage = ra.coverage;
+  BEGIN
+    DBMS_OUTPUT.PUT_LINE('Policy Rework List:');
+
+    FOR rec_uw IN c_policies LOOP
+      IF rec_uw.action = 'D' THEN
+        v_reunderwritten_count := v_reunderwritten_count + 1;
+        DBMS_OUTPUT.PUT_LINE('Policy ID: ' || rec_uw.id || ' - Re-underwritten');
+      END IF;
+    END LOOP;
+
+    FOR rec_rated IN c_rated_policies LOOP
+      IF rec_rated.action = 'D' THEN
+        v_rerated_count := v_rerated_count + 1;
+        DBMS_OUTPUT.PUT_LINE('Policy ID: ' || rec_rated.id || ' - Re-rated');
+      END IF;
+    END LOOP;
+
+    DBMS_OUTPUT.PUT_LINE('Total Reworked Policies: ' || (v_rerated_count + v_reunderwritten_count));
+    DBMS_OUTPUT.PUT_LINE('Re-rated Policies: ' || v_rerated_count);
+    DBMS_OUTPUT.PUT_LINE('Re-underwritten Policies: ' || v_reunderwritten_count);
+end;
+/
