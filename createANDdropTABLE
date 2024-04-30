@@ -1,0 +1,438 @@
+--Firstly check all the tables and delete if their exist any.
+
+--To check use SELECT table_name FROM user_tables;. 
+
+
+
+
+--Creating Tables along with Insert values.
+
+
+
+SQL> CREATE TABLE "User" (
+  2  user_id INT NOT NULL,
+  3  username VARCHAR2(100) NOT NULL,
+  4  password VARCHAR2(100) NOT NULL,
+  5  email VARCHAR2(255) NOT NULL,
+  6  user_type VARCHAR2(50) NOT NULL,
+  7  PRIMARY KEY (user_id)
+  8  );
+
+Table created.
+
+SQL> INSERT INTO "User" (user_id, username, password, email, user_type)
+  2  SELECT user_id, username, password, email, user_type
+  3  FROM (
+  4  SELECT 1 AS user_id, 'business_user1' AS username, 'password1' AS password, 'business1@example.com' AS email, 'business' AS user_type FROM dual
+  5  UNION ALL
+  6  SELECT 2 AS user_id, 'business_user2' AS username, 'password2' AS password, 'business2@example.com' AS email, 'business' AS user_type FROM dual
+  7  UNION ALL                     
+  8  SELECT 3 AS user_id, 'customer1' AS username, 'password3' AS password, 'customer1@example.com' AS email, 'customer' AS user_type FROM dual
+  9  UNION ALL
+ 10  SELECT 4 AS user_id, 'customer2' AS username, 'password4' AS password, 'customer2@example.com' AS email, 'customer' AS user_type FROM dual
+ 11  UNION ALL
+ 12  SELECT 5 AS user_id, 'admin' AS username, 'adminpassword' AS password, 'admin@example.com' AS email, 'admin' AS user_type FROM dual
+ 13  );
+
+5 rows created.
+
+
+
+SQL> CREATE TABLE Business (
+  2  business_id NUMBER PRIMARY KEY,
+  3  business_name VARCHAR2(255) NOT NULL,
+  4  owner_id INT NOT NULL,
+  5  business_type VARCHAR2(100),
+  6  hours_of_operation VARCHAR2(255),
+  7  FOREIGN KEY (owner_id) REFERENCES "User"(user_id)
+  8  );
+
+Table created.
+
+SQL> INSERT INTO Business ( business_id, business_name, owner_id, business_type, hours_of_operation )
+  2  SELECT  business_id, business_name, owner_id, business_type, hours_of_operation
+  3  FROM (
+  4  SELECT 1 AS business_id, 'amazon' AS business_name, 1 AS owner_id, 'small scale' AS business_type, '24/7' AS hours_of_operation FROM dual
+  5  UNION ALL
+  6  SELECT 2 AS business_id, 'accent services' AS business_name, 2 AS owner_id, 'large scale' AS business_type, '24/7' AS hours_of_operation FROM dual
+  7  UNION ALL
+  8  SELECT 3 AS business_id, 'timesquad' AS business_name, 3 AS owner_id, 'small scale' AS business_type, 'Monday - Friday  10am to 5pm' AS hours_of_operation FROM dual
+  9  UNION ALL
+ 10  SELECT 4 AS business_id, 'hudabuda' AS business_name,4 AS owner_id, 'medium scale' AS business_type, 'Monday - Friday  10am to 6pm' AS hours_of_operation FROM dual
+ 11  UNION ALL
+ 12  SELECT 5 AS business_id, 'animall ' AS business_name,5 AS owner_id, 'large scale' AS business_type, '24/7' AS hours_of_operation FROM dual
+ 13  );
+
+5 rows created.
+
+
+
+
+
+
+
+SQL> CREATE TABLE Membership (
+  2  membership_id NUMBER PRIMARY KEY,
+  3  user_id INT NOT NULL,
+  4  membership_name VARCHAR2(100) NOT NULL,
+  5  description VARCHAR2(255),
+  6  start_date DATE NOT NULL,
+  7  end_date DATE NOT NULL,
+  8  FOREIGN KEY (user_id) REFERENCES "User"(user_id)
+  9  );
+
+Table created.
+
+SQL> INSERT INTO Membership (membership_id, user_id, membership_name, description, start_date, end_date)
+  2  SELECT membership_id, user_id, membership_name, description, start_date, end_date
+  3  FROM (
+  4      SELECT 1 AS membership_id, 1 AS user_id, 'Premium' AS membership_name, 'Premium membership package' AS description, TO_DATE('2023-01-01', 'YYYY-MM-DD') AS start_date, TO_DATE('2023-12-31', 'YYYY-MM-DD') AS end_date FROM dual
+  5  	 UNION ALL                                       
+  6      SELECT 2 AS membership_id, 2 AS user_id, 'Gold' AS membership_name, 'Gold membership package' AS description, TO_DATE('2021-04-11', 'YYYY-MM-DD') AS start_date, TO_DATE('2025-12-31', 'YYYY-MM-DD') AS end_date FROM dual
+  7  );
+
+2 rows created.
+SQL> INSERT INTO Membership (membership_id, user_id, membership_name, description, start_date, end_date)
+  2  SELECT 3 AS membership_id, 3 AS user_id, 'Silver' AS membership_name, 'Silver membership package' AS description, TO_DATE('2022-05-15', 'YYYY-MM-DD') AS start_date, TO_DATE('2023-05-14', 'YYYY-MM-DD') AS end_date FROM dual;
+
+1 row created.
+
+SQL> INSERT INTO Membership (membership_id, user_id, membership_name, description, start_date, end_date)
+  2  SELECT 4 AS membership_id, 4 AS user_id, 'Bronze' AS membership_name, 'Bronze membership package' AS description, TO_DATE('2022-08-01', 'YYYY-MM-DD') AS start_date, TO_DATE('2023-07-31', 'YYYY-MM-DD') AS end_date FROM dual
+  3  UNION ALL
+  4  SELECT 5 AS membership_id, 5 AS user_id, 'Diamond' AS membership_name, 'Diamond membership package' AS description, TO_DATE('2023-06-01', 'YYYY-MM-DD') AS start_date, TO_DATE('2023-12-31', 'YYYY-MM-DD') AS end_date FROM dual 
+  5  ;
+
+2 rows created.
+
+
+
+
+SQL> CREATE TABLE BusinessCategories (
+  2  category_id NUMBER PRIMARY KEY,
+  3  category_name VARCHAR(100) NOT NULL,
+  4  category_description VARCHAR(255),
+  5  category_image_url VARCHAR(255),
+  6  creation_date DATE 
+  7  );
+
+Table created.
+
+SQL> ALTER TABLE BusinessCategories
+  2  ADD business_id NUMBER;
+
+Table altered.
+
+SQL> ALTER TABLE BusinessCategories
+  2  ADD CONSTRAINT fk_business_id FOREIGN KEY (business_id) REFERENCES Business(business_id);
+
+Table altered.
+
+SQL> INSERT INTO BusinessCategories (category_id, category_name, category_description, category_image_url, creation_date, business_id)
+  2  SELECT category_id, category_name, category_description, category_image_url, creation_date, business_id
+  3  FROM (
+  4      SELECT 1 AS category_id, 'Services' AS category_name, 'Services to Consumers' AS category_description, 'image_url_1.jpg' AS category_image_url, TO_DATE('2020-03-25', 'YYYY-MM-DD') AS creation_date, 1 AS business_id FROM dual
+  5      UNION ALL
+  6      SELECT 2 AS category_id, 'Education' AS category_name, 'Services to Students' AS category_description, 'image_url_2.jpg' AS category_image_url, TO_DATE('1988-03-25', 'YYYY-MM-DD') AS creation_date, 2 AS business_id FROM dual
+  7      UNION ALL
+  8      SELECT 3 AS category_id, 'Food' AS category_name, 'Cloud kitchen' AS category_description, 'image_url_3.jpg' AS category_image_url, TO_DATE('2010-03-25', 'YYYY-MM-DD') AS creation_date, 2 AS business_id FROM dual
+  9      UNION ALL
+  10     SELECT 4 AS category_id, 'Insurance' AS category_name, 'Insurance' AS category_description, 'image_url_7.jpg' AS category_image_url, TO_DATE('2020-03-25', 'YYYY-MM-DD') AS creation_date, 4 AS business_id FROM dual
+  11  );
+
+
+
+
+
+
+
+
+SQL> CREATE SEQUENCE job_id_seq;
+
+Sequence created.
+
+SQL> CREATE TABLE Jobs (
+  2  job_id NUMBER PRIMARY KEY,
+  3  business_id INT NOT NULL,
+  4  job_title VARCHAR2(255) NOT NULL,
+  5  job_description CLOB,
+  6  salary NUMBER(10, 2),
+  7  FOREIGN KEY (business_id) REFERENCES Business(business_id)
+  8  );
+
+Table created.
+
+SQL> CREATE OR REPLACE TRIGGER job_id_trigger
+  2  BEFORE INSERT ON Jobs
+  3  FOR EACH ROW
+  4  BEGIN
+  5      SELECT job_id_seq.NEXTVAL INTO :NEW.job_id FROM dual;
+  6  END;
+  7  /
+
+Trigger created.		
+
+
+SQL> INSERT INTO Jobs (job_id, business_id, job_title, job_description, salary)
+  2  VALUES (job_id_seq.NEXTVAL, 1, 'Software Developer', 'Developing software applications', 60000.00);
+
+1 row created.
+
+SQL> INSERT INTO Jobs (job_id, business_id, job_title, job_description, salary)
+  2  VALUES (job_id_seq.NEXTVAL, 1, 'Marketing Manager', 'Managing marketing campaigns', 55000.00);
+
+1 row created.
+
+SQL> INSERT INTO Jobs (job_id, business_id, job_title, job_description, salary)
+  2  VALUES (job_id_seq.NEXTVAL, 2, 'Sales Representative', 'Selling products to customers', 50000.00);
+
+1 row created.
+
+SQL> INSERT INTO Jobs (job_id, business_id, job_title, job_description, salary)
+  2  VALUES (job_id_seq.NEXTVAL, 3, 'Customer Support Specialist', 'Assisting customers with inquiries', 45000.00);
+
+1 row created.
+
+SQL> INSERT INTO Jobs (job_id, business_id, job_title, job_description, salary)
+  2  VALUES (job_id_seq.NEXTVAL, 4, 'Data Analyst', 'Analyzing data for business insights', 65000.00);
+
+1 row created.
+
+
+
+
+
+
+
+
+SQL> CREATE TABLE Request_Messages (
+  2  message_id NUMBER PRIMARY KEY,
+  3  sender_request_id INT NOT NULL,
+  4  receiver_id INT NOT NULL,
+  5  response CLOB,
+  6  message_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  7  FOREIGN KEY (sender_request_id) REFERENCES "User"(user_id),
+  8  FOREIGN KEY (receiver_id) REFERENCES "User"(user_id)
+  9  );
+
+Table created.
+
+
+SQL> INSERT INTO Request_Messages (message_id, sender_request_id, receiver_id, response, message_date)
+  2  VALUES (1, 1, 2, 'Thank you for your request. We will get back to you soon.', CURRENT_TIMESTAMP);
+
+1 row created.
+
+SQL> INSERT INTO Request_Messages (message_id, sender_request_id, receiver_id, response, message_date)
+  2  VALUES (2, 2, 1, 'Your request has been received and is being processed.', CURRENT_TIMESTAMP);
+
+1 row created.
+
+SQL> INSERT INTO Request_Messages (message_id, sender_request_id, receiver_id, response, message_date)
+  2  VALUES (3, 3, 1, 'We appreciate your interest. Please provide more details about your request.', CURRENT_TIMESTAMP);
+
+1 row created.
+
+SQL> INSERT INTO Request_Messages (message_id, sender_request_id, receiver_id, response, message_date)
+  2  VALUES (4, 4, 2, 'Thank you. We will review your request and respond shortly.', CURRENT_TIMESTAMP);
+
+1 row created.
+
+SQL> INSERT INTO Request_Messages (message_id, sender_request_id, receiver_id, response, message_date)
+  2  VALUES (5, 5, 3, 'Your request is noted. We will address it as soon as possible.', CURRENT_TIMESTAMP);
+
+1 row created.
+
+
+
+
+
+
+SQL> CREATE TABLE Location (
+  2  location_id NUMBER PRIMARY KEY,
+  3  business_id INT NOT NULL,
+  4  streetAddress VARCHAR2(255) NOT NULL,
+  5  city VARCHAR2(100) NOT NULL,
+  6  state VARCHAR2(100),
+  7  country VARCHAR2(100) NOT NULL,
+  8  CONSTRAINT fk_business_location FOREIGN KEY (business_id) REFERENCES Business(business_id)
+  9  );
+
+Table created.
+
+
+
+
+SQL> INSERT INTO Location (location_id, business_id, streetAddress, city, state, country)
+  2  
+SQL> SELECT location_id_seq.NEXTVAL, business_id, streetAddress, city, state, country
+  2  FROM (
+  3      SELECT 1 AS business_id, '123 Main St' AS streetAddress, 'New York' AS city, 'NY' AS state, 'USA' AS country FROM dual
+  4      UNION ALL
+  5      SELECT 2 AS business_id, '456 Elm St' AS streetAddress, 'Los Angeles' AS city, 'CA' AS state, 'USA' AS country FROM dual
+  6  );
+
+
+NEXTVAL BUSINESS_ID STREETADDRE CITY        ST COU
+---------- ----------- ----------- ----------- -- ---
+	 5	     1 123 Main St New York    NY USA
+	 6	     2 456 Elm St  Los Angeles CA US
+
+
+
+
+
+
+
+
+
+
+SQL> CREATE TABLE Reviews (
+  2  review_id NUMBER PRIMARY KEY,
+  3  business_id INT NOT NULL,
+  4  user_id INT NOT NULL,
+  5  rating INT NOT NULL,
+  6  review_text CLOB,
+  7  date_posted TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  8  FOREIGN KEY (business_id) REFERENCES Business(business_id),
+  9  FOREIGN KEY (user_id) REFERENCES "User"(user_id)
+ 10  );
+
+Table created.
+
+SQL> INSERT INTO Reviews (review_id, business_id, user_id, rating, review_text, date_posted)
+  2  VALUES (1, 1, 1, 4, 'Great experience with this business!', CURRENT_TIMESTAMP);
+
+1 row created.
+
+SQL> INSERT INTO Reviews (review_id, business_id, user_id, rating, review_text, date_posted)
+  2  VALUES (2, 1, 2, 5, 'Excellent service and highly recommended.', CURRENT_TIMESTAMP);
+
+1 row created.
+
+SQL> INSERT INTO Reviews (review_id, business_id, user_id, rating, review_text, date_posted)
+  2  VALUES (3, 2, 3, 3, 'Average experience. Could be better.', CURRENT_TIMESTAMP);
+
+1 row created.
+
+SQL> INSERT INTO Reviews (review_id, business_id, user_id, rating, review_text, date_posted)
+  2  VALUES (4, 2, 4, 5, 'Outstanding service! Will definitely come back.', CURRENT_TIMESTAMP);
+
+1 row created.
+
+SQL> INSERT INTO Reviews (review_id, business_id, user_id, rating, review_text, date_posted)
+  2  VALUES (5, 3, 1, 2, 'Disappointing experience. Needs improvement.', CURRENT_TIMESTAMP);
+
+1 row created.
+
+SQL> SET PAGESIZE 900; 
+SQL> SET LINESIZE 900; 
+SQL> COLUMN column_name HEADING 'Custom Heading';
+SQL> SELECT * FROM Reviews ;  
+
+ REVIEW_ID BUSINESS_ID	  USER_ID     RATING REVIEW_TEXT						      DATE_POSTED
+---------- ----------- ---------- ---------- -------------------------------------------------------------------------------- ---------------------------------------------------------------------------
+	 1	     1		1	   4 Great experience with this business!			      26-MAR-24 01.56.37.982972 PM
+	 2	     1		2	   5 Excellent service and highly recommended.			      26-MAR-24 01.56.48.852542 PM
+	 3	     2		3	   3 Average experience. Could be better.			      26-MAR-24 01.56.59.599916 PM
+	 4	     2		4	   5 Outstanding service! Will definitely come back.		      26-MAR-24 01.57.09.485085 PM
+	 5	     3		1	   2 Disappointing experience. Needs improvement.		      26-MAR-24 01.57.19.334065 PM
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--A query that will return a user and all his/her reviews for businesses used
+
+
+
+SQL> CREATE VIEW UserReviews AS
+  2  SELECT u.user_id, u.username, r.review_id, r.business_id, r.rating, r.review_text, r.date_posted
+  3  FROM "User" u
+  4  JOIN Reviews r ON u.user_id = r.user_id;
+
+View created.
+
+SQL> SELECT * FROM UserReviews;
+
+
+
+
+
+--To Drop all the Tables 
+
+Check the database - 
+
+SQL> SELECT sys_context('USERENV', 'DB_NAME') FROM dual;
+
+SYS_CONTEXT('USERENV','DB_NAME')
+----------------------------------------------------------------------------------------------------
+Csdbora
+
+
+Check all the tables 
+
+SQL> SELECT table_name FROM user_tables;
+
+TABLE_NAME
+------------------------------
+BUSINESS
+MEMBERSHIP
+BUSINESSCATEGORIES
+JOBS
+REQUEST_MESSAGES
+LOCATION
+REVIEWS
+User
+
+8 rows selected.
+
+To remove/delete all the tables from the database 
+SQL> DROP TABLE User cascade constraint;
+
+Table dropped.
+
+
+SQL> DROP TABLE Business cascade constraint;
+
+Table dropped.
+
+SQL> DROP TABLE Membership cascade constraint;
+
+Table dropped.
+
+SQL> DROP TABLE BusinessCategories cascade constraint;
+
+Table dropped.
+
+SQL> DROP TABLE Jobs cascade constraint;
+
+Table dropped.
+
+SQL> DROP TABLE Request_Messages cascade constraint;
+
+Table dropped.
+
+SQL> DROP TABLE Location cascade constraint;
+
+Table dropped.
+
+SQL> DROP TABLE Reviews cascade constraint;
+
+Table dropped.
+
+
+
+
+
