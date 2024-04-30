@@ -1,5 +1,5 @@
 --The Document Shows the SQL and PL/SQL queries for Insurance Database.
-
+--Refer Readme.file for Insurance Database Relational Schema. 
 
 
 1.List the names and salaries of all the underwriters in the company.
